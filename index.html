@@ -228,7 +228,7 @@ async function handleFile(e) {
     // map HEIC/HEIF to jpeg since Anthropic doesn't support them
     const safeType = ["image/jpeg","image/png","image/gif","image/webp"].includes(mimeType)
       ? mimeType : "image/jpeg";
-    const res = await fetch("/.netlify/functions/analyze", {
+    const res = await fetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageBase64, mimeType: safeType }),
