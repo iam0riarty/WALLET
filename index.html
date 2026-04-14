@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#060B14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="My Wallet" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <title>My Wallet</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800;9..40,900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; background: #060B14; color: #E2E8F0;
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased; overscroll-behavior: none;
+    }
+    * { scrollbar-width: none; -ms-overflow-style: none; }
+    *::-webkit-scrollbar { display: none; }
+    input, button { font-family: inherit; outline: none; }
+    button { cursor: pointer; border: none; background: none; }
+    @keyframes spin    { to { transform: rotate(360deg); } }
+    @keyframes fadeUp  { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    .page { animation: fadeUp .28s ease forwards; }
+    #app {
+      max-width: 430px; margin: 0 auto; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .header {
+      padding: calc(env(safe-area-inset-top, 44px) + 10px) 16px 14px;
+      display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+    }
+    .scroll-body { flex:1; overflow-y:auto; padding: 0 16px; padding-bottom: 100px; }
+    .nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: rgba(6,11,20,0.95); backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255,255,255,0.05);
+      display: flex; align-items: center; justify-content: space-around;
+      padding: 8px 24px calc(env(safe-area-inset-bottom, 16px) + 8px);
+      z-index: 100;
+    }
+    .nav-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; width: 64px; height: 52px; border-radius: 12px;
+      font-size: 20px; color: #475569; transition: all .18s;
+    }
+    .nav-btn.active { background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.22); color: #38BDF8; }
+    .nav-btn span.lbl { font-size: 9px; font-weight: 600; letter-spacing: .3px; }
+    .fab {
+      width: 52px; height: 52px; border-radius: 50%; margin-top: -22px;
+      background: linear-gradient(135deg,#38BDF8,#0EA5E9);
+      font-size: 24px; color: #fff;
+      box-shadow: 0 4px 20px rgba(14,165,233,.45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .gcard {
+      background: rgba(255,255,255,0.032);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px; padding: 18px;
+    }
+    .slabel {
+      font-size: 11px; font-weight: 700; color: #475569;
+      letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 12px;
+    }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 3px solid rgba(56,189,248,0.2); border-top-color: #38BDF8;
+      border-radius: 50%; animation: spin .9s linear infinite;
+    }
+    .toast {
+      position: fixed; bottom: 94px; left: 50%; transform: translateX(-50%);
+      background: #0F172A; border: 1px solid rgba(56,189,248,0.3);
+      border-radius: 14px; padding: 11px 22px; color: #CBD5E1;
+      font-size: 14px; z-index: 999; white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(56,189,248,0.12);
+      animation: fadeUp .3s ease; display: none;
+    }
+    .inp {
+      width: 100%; background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.09); border-radius: 13px;
+      padding: 12px 14px; color: #E2E8F0; font-size: 15px;
+      font-family: inherit;
+    }
+    .inp:focus { border-color: rgba(56,189,248,0.4); }
+    .btn-primary {
+      padding: 14px; border-radius: 15px; border: none;
+      background: linear-gradient(135deg,#38BDF8,#0EA5E9);
+      color: #fff; font-size: 15px; font-weight: 700; width: 100%;
+    }
+    .btn-secondary {
+      padding: 14px; border-radius: 15px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: transparent; color: #94A3B8;
+      font-size: 14px; font-weight: 600; width: 100%;
+    }
+    .cat-pill {
+      padding: 7px 12px; border-radius: 99px; font-size: 12px; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #475569;
+      transition: all .15s;
+    }
+    .cat-pill.active { border-width: 1.5px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div>
+      <div style="font-size:11px;color:#334155;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px" id="monthLabel">April 2026</div>
+      <div style="font-size:26px;font-weight:900;letter-spacing:-1px;color:#F1F5F9">My Wallet 💳</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:8px 12px">
+      <span style="font-size:11px;color:#475569">Income</span>
+      <input type="number" id="incomeInput" value="15000"
+        style="width:72px;background:transparent;border:none;color:#4ADE80;font-weight:800;font-size:14px;text-align:right"
+        oninput="onIncomeChange(this.value)" />
+      <span style="font-size:10px;color:#334155">QAR</span>
+    </div>
+  </div>
+
+  <div class="scroll-body" id="scrollBody">
+    <!-- pages injected here -->
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn active" id="nav-home" onclick="setTab('home')">
+      <span>🏠</span><span class="lbl">Home</span>
+    </button>
+    <button class="fab" onclick="setTab('add')">＋</button>
+    <button class="nav-btn" id="nav-stats" onclick="setTab('stats')">
+      <span>📊</span><span class="lbl">Stats</span>
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none" onchange="handleFile(event)" />
+
+<script>
+// ── state ─────────────────────────────────────────────────────────────────
+const CATS = {
+  food:          { label:"Food & Drinks",     icon:"🍽️", color:"#FF6B6B", bg:"#FF6B6B15" },
+  transport:     { label:"Transport",         icon:"🚗", color:"#4ECDC4", bg:"#4ECDC415" },
+  shopping:      { label:"Shopping",          icon:"🛍️", color:"#FFD166", bg:"#FFD16615" },
+  health:        { label:"Health",            icon:"💊", color:"#06D6A0", bg:"#06D6A015" },
+  entertainment: { label:"Entertainment",     icon:"🎬", color:"#A78BFA", bg:"#A78BFA15" },
+  bills:         { label:"Bills & Utilities", icon:"⚡", color:"#FB923C", bg:"#FB923C15" },
+  groceries:     { label:"Groceries",         icon:"🛒", color:"#34D399", bg:"#34D39915" },
+  other:         { label:"Other",             icon:"📦", color:"#94A3B8", bg:"#94A3B815" },
+};
+
+const DEFAULT_EXPENSES = [
+  { id:1,  amount:87.5,  merchant:"Carrefour",      category:"groceries",     description:"Weekly groceries",  date:"2026-04-10" },
+  { id:2,  amount:34.0,  merchant:"McDonald's",     category:"food",          description:"Lunch",             date:"2026-04-09" },
+  { id:3,  amount:22.0,  merchant:"Uber",           category:"transport",     description:"Taxi to work",      date:"2026-04-08" },
+  { id:4,  amount:65.0,  merchant:"Al Meera",       category:"groceries",     description:"Supermarket run",   date:"2026-04-07" },
+  { id:5,  amount:120.0, merchant:"Hamad Hospital", category:"health",        description:"Pharmacy",          date:"2026-04-06" },
+  { id:6,  amount:48.0,  merchant:"Starbucks",      category:"food",          description:"Coffee & snacks",   date:"2026-04-05" },
+  { id:7,  amount:200.0, merchant:"Villaggio Mall", category:"shopping",      description:"Clothes",           date:"2026-04-04" },
+  { id:8,  amount:350.0, merchant:"Ooredoo",        category:"bills",         description:"Phone bill",        date:"2026-04-03" },
+  { id:9,  amount:55.0,  merchant:"VOX Cinemas",    category:"entertainment", description:"Movie night",       date:"2026-04-02" },
+  { id:10, amount:18.5,  merchant:"Talabat",        category:"food",          description:"Dinner delivery",   date:"2026-04-01" },
+];
+
+let expenses = [];
+let income   = 15000;
+let tab      = "home";
+let manCat   = "food";
+let previewData = null;
+
+// ── persistence ───────────────────────────────────────────────────────────
+function save() {
+  localStorage.setItem("wlt_exp", JSON.stringify(expenses));
+  localStorage.setItem("wlt_inc", income);
+}
+function load() {
+  try {
+    const e = localStorage.getItem("wlt_exp");
+    expenses = e ? JSON.parse(e) : DEFAULT_EXPENSES;
+    income   = parseFloat(localStorage.getItem("wlt_inc") || "15000");
+    document.getElementById("incomeInput").value = income;
+  } catch { expenses = DEFAULT_EXPENSES; }
+}
+
+// ── utils ─────────────────────────────────────────────────────────────────
+const fmt = n => Number(n).toLocaleString("en",{minimumFractionDigits:0,maximumFractionDigits:2});
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 3000);
+}
+
+function onIncomeChange(v) {
+  income = parseFloat(v) || 0;
+  save();
+  if (tab === "home" || tab === "stats") render();
+}
+
+// ── image resize ──────────────────────────────────────────────────────────
+function resizeToBase64(file, maxPx = 1400) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width  = Math.round(img.width  * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      // always output as jpeg for consistency
+      res({ imageBase64: c.toDataURL("image/jpeg", 0.88).split(",")[1], mimeType: "image/jpeg" });
+    };
+    img.onerror = rej; img.src = url;
+  });
+}
+
+// ── file handler ──────────────────────────────────────────────────────────
+async function handleFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  e.target.value = "";
+  renderAnalyzing();
+  try {
+    const { imageBase64, mimeType } = await resizeToBase64(file);
+    const res = await fetch("/.netlify/functions/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64, mimeType }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Server error");
+    previewData = { ...data, date: todayStr() };
+    renderPreview();
+  } catch(err) {
+    console.error(err);
+    renderAddPage("Analysis failed: " + (err.message || "Try a clearer photo or add manually."));
+  }
+}
+
+// ── nav ───────────────────────────────────────────────────────────────────
+function setTab(t) {
+  tab = t; previewData = null;
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  const nb = document.getElementById("nav-" + t);
+  if (nb) nb.classList.add("active");
+  render();
+}
+
+function render() {
+  if      (tab === "home")  renderHome();
+  else if (tab === "stats") renderStats();
+  else if (tab === "add")   renderAddPage();
+}
+
+// ── svg donut ─────────────────────────────────────────────────────────────
+function donutSVG(slices, size=130) {
+  const total = slices.reduce((s,d)=>s+d.v,0);
+  if (!total) return "";
+  const cx=size/2,cy=size/2,r=size*.37,sw=size*.15;
+  let cum=0;
+  const paths = slices.map(d=>{
+    const p=d.v/total,a1=cum*2*Math.PI-Math.PI/2;
+    cum+=p;
+    const a2=cum*2*Math.PI-Math.PI/2;
+    const x1=cx+r*Math.cos(a1),y1=cy+r*Math.sin(a1);
+    const x2=cx+r*Math.cos(a2),y2=cy+r*Math.sin(a2);
+    return `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${p>.5?1:0} 1 ${x2} ${y2}" fill="none" stroke="${d.color}" stroke-width="${sw}" stroke-linecap="round" opacity=".88"/>`;
+  }).join("");
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    ${paths}
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="#64748B" font-size="${size*.1}" font-family="DM Sans">spent</text>
+    <text x="${cx}" y="${cy+13}" text-anchor="middle" fill="#F1F5F9" font-size="${size*.115}" font-weight="800" font-family="DM Sans">${fmt(total)}</text>
+  </svg>`;
+}
+
+// ── HOME ──────────────────────────────────────────────────────────────────
+function renderHome() {
+  const total = expenses.reduce((s,e)=>s+e.amount,0);
+  const remaining = income - total;
+  const pct = Math.min(100,(total/income)*100);
+  const barCol = pct>85?"#EF4444":pct>65?"#F59E0B":"#38BDF8";
+
+  const byCat = Object.entries(CATS).map(([k,c])=>({
+    key:k,...c, total:expenses.filter(e=>e.category===k).reduce((s,e)=>s+e.amount,0)
+  })).filter(c=>c.total>0).sort((a,b)=>b.total-a.total).slice(0,5);
+
+  const recentHTML = expenses.slice(0,10).map(e=>{
+    const cat = CATS[e.category]||CATS.other;
+    return `<div class="gcard" style="padding:12px 14px;margin-bottom:9px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:13px;background:${cat.bg};display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${cat.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:14px;color:#E2E8F0;margin-bottom:1px">${e.merchant}</div>
+          <div style="font-size:12px;color:#475569">${e.description}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-weight:800;font-size:15px;color:#F87171">−${fmt(e.amount)}</div>
+          <div style="font-size:11px;color:#334155;margin-top:2px">${(e.date||"").slice(5)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const catHTML = byCat.map(c=>`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <div style="width:34px;height:34px;border-radius:11px;background:${c.bg};display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0">${c.icon}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:600;color:#CBD5E1">${c.label}</span>
+          <span style="font-size:13px;font-weight:700;color:${c.color}">${fmt(c.total)} QAR</span>
+        </div>
+        <div style="height:5px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden">
+          <div style="height:100%;width:${total>0?(c.total/total*100):0}%;background:${c.color};border-radius:99px;transition:width .6s ease"></div>
+        </div>
+      </div>
+    </div>`).join("");
+
+  document.getElementById("scrollBody").innerHTML = `<div class="page">
+    <!-- hero -->
+    <div style="border-radius:26px;padding:22px;background:linear-gradient(145deg,#0a192f,#0f2744 55%,#08192e);border:1px solid rgba(56,189,248,0.15);position:relative;overflow:hidden;margin-bottom:14px">
+      <div style="position:absolute;top:-50px;right:-30px;width:160px;height:160px;border-radius:50%;background:rgba(56,189,248,0.07);filter:blur(50px);pointer-events:none"></div>
+      <div style="position:absolute;bottom:-40px;left:0;width:120px;height:120px;border-radius:50%;background:rgba(99,102,241,0.06);filter:blur(40px);pointer-events:none"></div>
+      <div style="position:relative">
+        <div style="font-size:11px;color:#475569;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Total Spent · April 2026</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:20px">
+          <span style="font-size:48px;font-weight:900;color:#F1F5F9;line-height:1;letter-spacing:-2px">${fmt(total)}</span>
+          <span style="font-size:18px;color:#38BDF8;font-weight:700;padding-bottom:7px">QAR</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:18px">
+          <div style="flex:1;background:rgba(255,255,255,0.05);border-radius:15px;padding:11px 14px">
+            <div style="font-size:11px;color:#475569;margin-bottom:4px">Income</div>
+            <div style="font-size:17px;font-weight:800;color:#4ADE80">${fmt(income)} <span style="font-size:11px;color:#334155">QAR</span></div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,0.05);border-radius:15px;padding:11px 14px">
+            <div style="font-size:11px;color:#475569;margin-bottom:4px">Remaining</div>
+            <div style="font-size:17px;font-weight:800;color:${remaining<0?"#EF4444":"#A78BFA"}">${fmt(remaining)} <span style="font-size:11px;color:#334155">QAR</span></div>
+          </div>
+        </div>
+        <div style="height:7px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,${barCol}66,${barCol});border-radius:99px;transition:width .7s ease"></div>
+        </div>
+        <div style="font-size:11px;color:#334155;margin-top:6px">${Math.round(pct)}% of monthly income</div>
+      </div>
+    </div>
+    ${byCat.length?`<div class="gcard" style="margin-bottom:14px"><div class="slabel">Top Categories</div>${catHTML}</div>`:""}
+    <div class="slabel">Recent Transactions</div>
+    ${recentHTML}
+  </div>`;
+}
+
+// ── STATS ─────────────────────────────────────────────────────────────────
+function renderStats() {
+  const total = expenses.reduce((s,e)=>s+e.amount,0);
+  const byCat = Object.entries(CATS).map(([k,c])=>({
+    key:k,...c,
+    total: expenses.filter(e=>e.category===k).reduce((s,e)=>s+e.amount,0),
+    count: expenses.filter(e=>e.category===k).length,
+  })).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+
+  // daily last 7
+  const ref = new Date("2026-04-13");
+  const days = Array.from({length:7},(_,i)=>{
+    const d=new Date(ref); d.setDate(d.getDate()-(6-i));
+    const ds=d.toISOString().slice(0,10);
+    return { label:d.toLocaleDateString("en",{weekday:"short"}), total:expenses.filter(e=>e.date===ds).reduce((s,e)=>s+e.amount,0) };
+  });
+  const maxDay = Math.max(...days.map(d=>d.total),1);
+  const avgDay = total/13;
+  const biggest = expenses.length ? expenses.reduce((a,b)=>b.amount>a.amount?b:a,expenses[0]) : null;
+
+  const barsHTML = days.map((d,i)=>{
+    const h = d.total>0 ? Math.max(6,(d.total/maxDay)*80) : 6;
+    const isT = i===6;
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+      <span style="font-size:9px;color:#475569;height:14px;display:flex;align-items:flex-end">${d.total>0?fmt(d.total):""}</span>
+      <div style="width:100%;height:${h}px;border-radius:7px;background:${isT?"linear-gradient(180deg,#38BDF8,#0EA5E9)":"rgba(56,189,248,0.18)"};transition:height .5s ease"></div>
+      <span style="font-size:10px;font-weight:${isT?700:400};color:${isT?"#38BDF8":"#475569"}">${d.label}</span>
+    </div>`;
+  }).join("");
+
+  const allCatHTML = byCat.map(c=>`
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:13px">
+      <div style="width:40px;height:40px;border-radius:13px;background:${c.bg};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">${c.icon}</div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+          <div>
+            <span style="font-size:13px;font-weight:600;color:#CBD5E1">${c.label}</span>
+            <span style="font-size:11px;color:#334155"> · ${c.count} txn${c.count!==1?"s":""}</span>
+          </div>
+          <span style="font-size:13px;font-weight:800;color:${c.color}">${fmt(c.total)} <span style="font-size:10px;color:#475569">QAR</span></span>
+        </div>
+        <div style="height:5px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden">
+          <div style="height:100%;width:${total>0?(c.total/total*100):0}%;background:${c.color};border-radius:99px"></div>
+        </div>
+      </div>
+    </div>`).join("");
+
+  const legendHTML = byCat.slice(0,5).map(c=>`
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+      <div style="width:9px;height:9px;border-radius:2px;background:${c.color};flex-shrink:0"></div>
+      <span style="font-size:12px;color:#94A3B8;flex:1">${c.label}</span>
+      <span style="font-size:12px;font-weight:700;color:${c.color}">${Math.round(total>0?(c.total/total*100):0)}%</span>
+    </div>`).join("");
+
+  document.getElementById("scrollBody").innerHTML = `<div class="page">
+    <!-- kpis -->
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      ${[{icon:"🔢",val:expenses.length,lbl:"Transactions"},{icon:"📅",val:fmt(avgDay),lbl:"Avg/Day QAR"},{icon:"💰",val:Math.max(0,Math.round(((income-total)/income)*100))+"%",lbl:"Saved"}].map(k=>`
+      <div class="gcard" style="flex:1;padding:13px 10px;text-align:center">
+        <div style="font-size:22px;margin-bottom:5px">${k.icon}</div>
+        <div style="font-size:17px;font-weight:900;color:#F1F5F9;margin-bottom:2px">${k.val}</div>
+        <div style="font-size:10px;color:#475569;line-height:1.3">${k.lbl}</div>
+      </div>`).join("")}
+    </div>
+    <!-- donut -->
+    <div class="gcard" style="margin-bottom:14px">
+      <div class="slabel">Spending Breakdown</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        ${donutSVG(byCat.map(c=>({v:c.total,color:c.color})))}
+        <div style="flex:1">${legendHTML}</div>
+      </div>
+    </div>
+    <!-- bars -->
+    <div class="gcard" style="margin-bottom:14px">
+      <div class="slabel">Daily · Last 7 Days</div>
+      <div style="display:flex;align-items:flex-end;gap:6px;height:100px">${barsHTML}</div>
+    </div>
+    <!-- all categories -->
+    <div class="gcard" style="margin-bottom:14px">
+      <div class="slabel">All Categories</div>
+      ${allCatHTML}
+    </div>
+    ${biggest?`
+    <div class="gcard" style="border-color:rgba(251,146,60,0.2);background:rgba(251,146,60,0.04);margin-bottom:14px">
+      <div class="slabel">🏆 Biggest Expense</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:14px;background:${(CATS[biggest.category]||CATS.other).bg};display:flex;align-items:center;justify-content:center;font-size:22px">${(CATS[biggest.category]||CATS.other).icon}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;color:#E2E8F0">${biggest.merchant}</div>
+          <div style="font-size:12px;color:#475569">${biggest.description}</div>
+        </div>
+        <div style="font-weight:900;font-size:18px;color:#FB923C">${fmt(biggest.amount)} <span style="font-size:11px;color:#475569">QAR</span></div>
+      </div>
+    </div>`:""}
+    <!-- summary -->
+    <div class="gcard" style="border-color:rgba(56,189,248,0.13);background:rgba(56,189,248,0.03);margin-bottom:14px">
+      <div class="slabel">Month Summary</div>
+      ${[{l:"Income",v:fmt(income)+" QAR",c:"#4ADE80"},{l:"Spent",v:fmt(total)+" QAR",c:"#F87171"},{l:"Remaining",v:fmt(income-total)+" QAR",c:income-total<0?"#EF4444":"#A78BFA"},{l:"Savings",v:Math.max(0,Math.round(((income-total)/income)*100))+"%",c:"#38BDF8"}].map((r,i,a)=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:${i<a.length-1?"1px solid rgba(255,255,255,0.04)":"none"}">
+        <span style="font-size:13px;color:#64748B">${r.l}</span>
+        <span style="font-weight:800;font-size:15px;color:${r.c}">${r.v}</span>
+      </div>`).join("")}
+    </div>
+  </div>`;
+}
+
+// ── ADD PAGE ──────────────────────────────────────────────────────────────
+function renderAddPage(errMsg="") {
+  tab = "add";
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.remove("active"));
+  document.getElementById("scrollBody").innerHTML = `<div class="page">
+    <div style="font-size:20px;font-weight:900;color:#F1F5F9;margin-bottom:16px">Add Expense</div>
+    ${errMsg?`<div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:14px;padding:12px 16px;color:#FCA5A5;font-size:13px;margin-bottom:14px">⚠️ ${errMsg}</div>`:""}
+    <button onclick="startScan()"
+      style="border:2px dashed rgba(56,189,248,0.28);border-radius:22px;padding:40px 20px;background:rgba(56,189,248,0.04);color:#7DD3FC;display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;margin-bottom:12px">
+      <span style="font-size:52px">📸</span>
+      <span style="font-size:17px;font-weight:700">Scan Receipt</span>
+      <span style="font-size:13px;color:#334155">AI extracts everything automatically</span>
+    </button>
+    <button onclick="renderManual()"
+      style="border:1px solid rgba(255,255,255,0.07);border-radius:18px;padding:20px;background:rgba(255,255,255,0.025);color:#E2E8F0;display:flex;align-items:center;gap:14px;width:100%">
+      <span style="font-size:30px">✍️</span>
+      <div style="text-align:left">
+        <div style="font-size:15px;font-weight:700">Manual Entry</div>
+        <div style="font-size:12px;color:#475569">Type details yourself</div>
+      </div>
+    </button>
+  </div>`;
+}
+
+function startScan() {
+  document.getElementById("fileInput").click();
+}
+
+function renderAnalyzing() {
+  document.getElementById("scrollBody").innerHTML = `<div class="page" style="padding-top:80px;display:flex;flex-direction:column;align-items:center;gap:20px">
+    <div class="spinner"></div>
+    <div style="font-size:17px;font-weight:700;color:#CBD5E1">Analyzing receipt…</div>
+    <div style="font-size:13px;color:#475569;text-align:center">AI is reading amount, merchant & category</div>
+  </div>`;
+}
+
+function renderPreview() {
+  const d = previewData;
+  const cat = CATS[d.category]||CATS.other;
+  document.getElementById("scrollBody").innerHTML = `<div class="page">
+    <div style="font-size:20px;font-weight:900;color:#F1F5F9;margin-bottom:16px">✅ Receipt Analyzed</div>
+    <div class="gcard" style="margin-bottom:16px">
+      ${[["💰 Amount",fmt(d.amount)+" QAR"],["🏪 Merchant",d.merchant],["📁 Category",cat.label],["📝 Description",d.description||"—"]].map(([l,v])=>`
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <span style="font-size:13px;color:#475569">${l}</span>
+        <span style="font-size:14px;font-weight:700;color:#E2E8F0;text-align:right;max-width:55%">${v}</span>
+      </div>`).join("")}
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-secondary" style="flex:1" onclick="renderAddPage()">Retake</button>
+      <button class="btn-primary" style="flex:2" onclick="confirmAdd()">Confirm ✓</button>
+    </div>
+  </div>`;
+}
+
+function confirmAdd() {
+  if (!previewData) return;
+  expenses.unshift({ id: Date.now(), ...previewData });
+  save(); previewData = null;
+  setTab("home");
+  showToast("✅ Expense added!");
+}
+
+// ── MANUAL ────────────────────────────────────────────────────────────────
+function renderManual() {
+  manCat = "food";
+  const catBtns = Object.entries(CATS).map(([k,c])=>`
+    <button class="cat-pill ${k===manCat?"active":""}" id="cat-${k}"
+      onclick="selectCat('${k}')"
+      style="${k===manCat?`border-color:${c.color};border-width:1.5px;background:${c.bg};color:${c.color}`:""}">
+      ${c.icon} ${c.label}
+    </button>`).join("");
+
+  document.getElementById("scrollBody").innerHTML = `<div class="page">
+    <div style="font-size:20px;font-weight:900;color:#F1F5F9;margin-bottom:16px">Manual Entry</div>
+    <div style="margin-bottom:13px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:5px;font-weight:600">Amount (QAR)</div>
+      <input class="inp" type="number" id="manAmount" placeholder="0.00" />
+    </div>
+    <div style="margin-bottom:13px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:5px;font-weight:600">Merchant / Store</div>
+      <input class="inp" type="text" id="manMerchant" placeholder="e.g. LuLu Hypermarket" />
+    </div>
+    <div style="margin-bottom:13px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:5px;font-weight:600">Description (optional)</div>
+      <input class="inp" type="text" id="manDesc" placeholder="e.g. Weekly groceries" />
+    </div>
+    <div style="margin-bottom:13px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:5px;font-weight:600">Date</div>
+      <input class="inp" type="date" id="manDate" value="${todayStr()}" />
+    </div>
+    <div style="margin-bottom:20px">
+      <div style="font-size:12px;color:#64748B;margin-bottom:8px;font-weight:600">Category</div>
+      <div style="display:flex;flex-wrap:wrap;gap:7px" id="catBtns">${catBtns}</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-secondary" style="flex:1" onclick="renderAddPage()">Back</button>
+      <button class="btn-primary" style="flex:2" onclick="confirmManual()">Add Expense ✓</button>
+    </div>
+  </div>`;
+}
+
+function selectCat(k) {
+  manCat = k;
+  document.querySelectorAll(".cat-pill").forEach(b=>{
+    const bk = b.id.replace("cat-","");
+    const c = CATS[bk];
+    if (bk===k) {
+      b.style.borderColor=c.color; b.style.borderWidth="1.5px";
+      b.style.background=c.bg; b.style.color=c.color;
+      b.classList.add("active");
+    } else {
+      b.style.borderColor="rgba(255,255,255,0.08)"; b.style.borderWidth="1px";
+      b.style.background="transparent"; b.style.color="#475569";
+      b.classList.remove("active");
+    }
+  });
+}
+
+function confirmManual() {
+  const amount   = parseFloat(document.getElementById("manAmount").value);
+  const merchant = document.getElementById("manMerchant").value.trim();
+  const desc     = document.getElementById("manDesc").value.trim();
+  const date     = document.getElementById("manDate").value || todayStr();
+  if (!amount || !merchant) { showToast("⚠️ Fill in amount and merchant"); return; }
+  expenses.unshift({ id:Date.now(), amount, merchant, category:manCat, description:desc, date });
+  save(); setTab("home"); showToast("✅ Expense added!");
+}
+
+// ── init ──────────────────────────────────────────────────────────────────
+load();
+renderHome();
+</script>
+</body>
+</html>
